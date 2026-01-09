@@ -2,7 +2,7 @@ trigger:
 - main
 
 stages:
-# ---------------- CI STAGE ----------------
+# ---------------- CI ----------------
 - stage: CI
   displayName: Build & Push Docker Image
   jobs:
@@ -21,14 +21,14 @@ stages:
           latest
           $(Build.BuildId)
 
-# ---------------- CD STAGE ----------------
-- stage: CD
-  displayName: Deploy to Azure VM
+# ---------------- TEST ----------------
+- stage: TEST
+  displayName: Deploy to TEST
   dependsOn: CI
   jobs:
-  - deployment: DeployToVM
-    displayName: Deploy to VM
-    environment: test-vm   # 👈 Approval happens HERE
+  - deployment: DeployTest
+    displayName: Deploy to Test VM
+    environment: test-vm
     pool:
       name: VM-Pool
     strategy:
@@ -40,4 +40,25 @@ stages:
               docker stop app || true
               docker rm app || true
               docker run -d -p 80:80 --name app ashishmondal420/azure-devops-live:latest
-            displayName: Run container on VM
+            displayName: Deploy to Test
+
+# ---------------- PROD ----------------
+- stage: PROD
+  displayName: Deploy to PROD
+  dependsOn: TEST
+  jobs:
+  - deployment: DeployProd
+    displayName: Deploy to Prod VM
+    environment: prod-vm   # 👈 STRICT approval here
+    pool:
+      name: VM-Pool
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - script: |
+              docker pull ashishmondal420/azure-devops-live:latest
+              docker stop app || true
+              docker rm app || true
+              docker run -d -p 80:80 --name app ashishmondal420/azure-devops-live:latest
+            displayName: Deploy to Prod
