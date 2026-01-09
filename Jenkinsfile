@@ -24,15 +24,16 @@ pipeline {
             }
         }
 
-        stage('Stop Old Container') {
-            steps {
-                sh '''
-                docker rm -f $CONTAINER_NAME || true
-                '''
-            }
-        }
+stage('Stop Old Container') {
+    steps {
+        sh '''
+        echo "Stopping any container using port 8082..."
+        docker ps -q --filter "publish=8082" | xargs -r docker rm -f
+        '''
+    }
+}
 
-        stage('Run Container') {
+      stage('Run Container') {
             steps {
                 sh '''
                 docker run -d \
