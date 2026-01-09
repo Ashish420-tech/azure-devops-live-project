@@ -1,0 +1,17 @@
+trigger:
+- main
+
+pool:
+  vmImage: ubuntu-latest
+
+steps:
+- task: Docker@2
+  displayName: Build and Push Docker Image
+  inputs:
+    containerRegistry: dockerhub-connection
+    repository: ashishmondal420/azure-devops-live
+    command: buildAndPush
+    Dockerfile: app/Dockerfile
+    tags: |
+      latest
+      $(Build.BuildId)
