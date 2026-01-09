@@ -25,6 +25,14 @@ stages:
 - stage: CD
   displayName: Deploy to Azure VM
   dependsOn: CI
+
+  approvals:
+    - approval:
+        type: Manual
+        reviewers:
+          - ashishmondallinkedin2025   # 👈 your Azure DevOps user
+        instructions: "Approve to deploy to Azure VM"
+
   jobs:
   - job: Deploy
     pool:
@@ -36,5 +44,4 @@ stages:
         docker rm app || true
         docker run -d -p 80:80 --name app ashishmondal420/azure-devops-live:latest
       displayName: Run container on VM
-
 
