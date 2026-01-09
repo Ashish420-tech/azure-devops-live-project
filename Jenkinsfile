@@ -11,7 +11,7 @@ pipeline {
         stage('Checkout Code') {
             steps {
                 git branch: 'dev',
-                    url: 'https://github.com/<your-username>/<your-repo>.git'
+                    url: 'https://github.com/Ashish420-tech/azure-devops-live-project.git'
             }
         }
 
