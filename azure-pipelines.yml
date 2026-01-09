@@ -1,18 +1,40 @@
 trigger:
 - main
 
-pool:
-  name: VM-Pool   # 👈 use self-hosted agent
+stages:
+# ---------------- CI STAGE ----------------
+- stage: CI
+  displayName: Build & Push Docker Image
+  jobs:
+  - job: Build
+    pool:
+      name: VM-Pool
+    steps:
+    - task: Docker@2
+      displayName: Build and Push Image
+      inputs:
+        containerRegistry: dockerhub-connection
+        repository: ashishmondal420/azure-devops-live
+        command: buildAndPush
+        Dockerfile: app/Dockerfile
+        tags: |
+          latest
+          $(Build.BuildId)
 
-steps:
-- task: Docker@2
-  displayName: Build and Push Docker Image
-  inputs:
-    containerRegistry: dockerhub-connection
-    repository: ashishmondal420/azure-devops-live
-    command: buildAndPush
-    Dockerfile: app/Dockerfile
-    tags: |
-      latest
-      $(Build.BuildId)
+# ---------------- CD STAGE ----------------
+- stage: CD
+  displayName: Deploy to Azure VM
+  dependsOn: CI
+  jobs:
+  - job: Deploy
+    pool:
+      name: VM-Pool
+    steps:
+    - script: |
+        docker pull ashishmondal420/azure-devops-live:latest
+        docker stop app || true
+        docker rm app || true
+        docker run -d -p 80:80 --name app ashishmondal420/azure-devops-live:latest
+      displayName: Run container on VM
+
 
