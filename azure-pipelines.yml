@@ -1,64 +1,94 @@
 trigger:
 - main
 
+variables:
+  imageName: ashishmondal420/azure-devops-live
+
 stages:
-# ---------------- CI ----------------
+
+# =========================
+# CI STAGE
+# =========================
 - stage: CI
   displayName: Build & Push Docker Image
   jobs:
   - job: Build
+    displayName: CI - Docker Build
     pool:
       name: VM-Pool
+
     steps:
-    - task: Docker@2
-      displayName: Build and Push Image
+    # Fetch secrets from Azure Key Vault
+    - task: AzureKeyVault@2
+      displayName: Fetch secrets from Azure Key Vault
       inputs:
-        containerRegistry: dockerhub-connection
-        repository: ashishmondal420/azure-devops-live
+        azureSubscription: azure-kv-connection
+        KeyVaultName: kv-azuredevops-live-test
+        SecretsFilter: 'docker-username,docker-password'
+        RunAsPreJob: true
+
+    # Docker login using Key Vault secrets
+    - script: |
+        echo $(docker-password) | docker login -u $(docker-username) --password-stdin
+      displayName: Docker Login (Key Vault)
+
+    # Build & push Docker image
+    - task: Docker@2
+      displayName: Build and Push Docker Image
+      inputs:
         command: buildAndPush
+        repository: $(imageName)
         Dockerfile: app/Dockerfile
         tags: |
           latest
           $(Build.BuildId)
 
-# ---------------- TEST ----------------
+# =========================
+# TEST STAGE
+# =========================
 - stage: TEST
   displayName: Deploy to TEST
   dependsOn: CI
+
   jobs:
   - deployment: DeployTest
     displayName: Deploy to Test VM
-    environment: test-vm
+    environment: test-vm     # 👈 Approval happens here
     pool:
       name: VM-Pool
+
     strategy:
       runOnce:
         deploy:
           steps:
           - script: |
-              docker pull ashishmondal420/azure-devops-live:latest
+              docker pull $(imageName):latest
               docker stop app || true
               docker rm app || true
-              docker run -d -p 80:80 --name app ashishmondal420/azure-devops-live:latest
-            displayName: Deploy to Test
+              docker run -d -p 80:80 --name app $(imageName):latest
+            displayName: Deploy container to TEST VM
 
-# ---------------- PROD ----------------
+# =========================
+# PROD STAGE
+# =========================
 - stage: PROD
   displayName: Deploy to PROD
   dependsOn: TEST
+
   jobs:
   - deployment: DeployProd
     displayName: Deploy to Prod VM
-    environment: prod-vm   # 👈 STRICT approval here
+    environment: prod-vm     # 👈 STRONG approval here
     pool:
       name: VM-Pool
+
     strategy:
       runOnce:
         deploy:
           steps:
           - script: |
-              docker pull ashishmondal420/azure-devops-live:latest
+              docker pull $(imageName):latest
               docker stop app || true
               docker rm app || true
-              docker run -d -p 80:80 --name app ashishmondal420/azure-devops-live:latest
-            displayName: Deploy to Prod
+              docker run -d -p 80:80 --name app $(imageName):latest
+            displayName: Deploy container to PROD VM
