@@ -8,13 +8,6 @@ pipeline {
 
     stages {
 
-        stage('Checkout Code') {
-            steps {
-                git branch: 'dev',
-                    url: 'https://github.com/Ashish420-tech/azure-devops-live-project.git'
-            }
-        }
-
         stage('Build Docker Image') {
             steps {
                 sh '''
@@ -24,16 +17,19 @@ pipeline {
             }
         }
 
-stage('Stop Old Container') {
-    steps {
-        sh '''
-        echo "Stopping any container using port 8082..."
-        docker ps -q --filter "publish=8082" | xargs -r docker rm -f
-        '''
-    }
-}
+        stage('Stop Old Container') {
+            steps {
+                sh '''
+                echo "Removing container by name..."
+                docker rm -f $CONTAINER_NAME || true
 
-      stage('Run Container') {
+                echo "Removing container using port 8082..."
+                docker ps -q --filter "publish=8082" | xargs -r docker rm -f
+                '''
+            }
+        }
+
+        stage('Run Container') {
             steps {
                 sh '''
                 docker run -d \
@@ -47,10 +43,10 @@ stage('Stop Old Container') {
 
     post {
         success {
-            echo "✅ Pipeline executed successfully!"
+            echo "✅ Deployment successful on port 8082"
         }
         failure {
-            echo "❌ Pipeline failed!"
+            echo "❌ Deployment failed"
         }
     }
 }
